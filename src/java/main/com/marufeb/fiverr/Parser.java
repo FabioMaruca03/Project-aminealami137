@@ -2,8 +2,6 @@ package com.marufeb.fiverr;
 
 import ui.UIAuxiliaryMethods;
 
-import java.io.*;
-import java.util.Objects;
 import java.util.Scanner;
 
 /* For the end of year administration of Programming for History of Arts students you are
@@ -36,133 +34,124 @@ import java.util.Scanner;
  */
 public class Parser {
     private static class Student {
-        private final int[] grades;
-        private final String[] similarities;
-        private int similaritySize = 0;
-        private final int[] similaritiesScore;
-        private final String name;
-        private float grade = 0;
+        private final int[] grades; // Array storing grades (type int) - final, so cannot change
+        private int gradesSize; // The logical grades[] size
+        private final String[] similarities; // Array storing similarities (type String) - final, so cannot change
+        private int similaritySize; // The logical similarities[] size
+        private final int[] similaritiesScore; // Array storing similaritiesScores (type int) - final, so cannot change
+        private int similarityScoreSize; // The logical similaritiesScore[] size
+        private final String name; // The student's name - final, so cannot change
+        private float grade = 0; // The grade sum of the student
 
         public Student(String[] details) {
-            String[] d0 = details[0].split("_");
-            name = d0[0];
-            grades = new int[d0[1].split(" ").length];
-            for (int i = 0; i < grades.length; i++) {
-                grades[i] = Integer.parseInt(d0[1].split(" ")[i]);
-                grade+=grades[i];
+            Scanner scanner = new Scanner(details[0]).useDelimiter("_"); // Create a new scanner and set the delimiter
+            name = scanner.next(); // Name is the first string
+            Scanner gradesScanner = new Scanner(scanner.next()).useDelimiter(" "); // Create a new scanner from the old one
+            grades = new int[100]; // Initialize the grades[] with a physical size of 100
+            for (gradesSize = 0; gradesScanner.hasNext(); gradesSize++) { // For loop -> described like anywhere
+                grades[gradesSize] = Integer.parseInt(gradesScanner.next()); // set the gradesSize cell of the grades vector to the parsed integer from the next string
+                grade+=grades[gradesSize]; // Sum the new vote to the old one
             }
-            grade/=grades.length;
-            String[] d1 = details[1].split(";");
-            String[] scores = d1[0].split("=");
-            similaritiesScore = new int[10];
-            for (int i = 0; i < scores.length; i++) {
-                similaritiesScore[i] = Integer.parseInt(scores[i]);
-                similaritySize++;
-            }
-            similarities = new String[100];
-            if (d1.length == 2) {
-                String[] s = d1[1].split(",");
-                System.arraycopy(s, 0, similarities, 0, s.length);
-            }
-        }
+            grade/=gradesSize; // Calculate the media
+            scanner.close(); // Close the first scanner
+            gradesScanner.close(); // Close the second scanner
 
-        public String[] getSimilarities() {
-            return similarities;
+            scanner = new Scanner(details[1]).useDelimiter(";"); // Create a new scanner and set the delimiter
+
+            Scanner scoresScanner = new Scanner(scanner.next()).useDelimiter("="); // Create a new scanner from the old one and also set the delimiter
+            similaritiesScore = new int[10]; // Initialize the similaritiesScore[] with a physical size of 10
+            for (similarityScoreSize = 0; similarityScoreSize < 10 && scoresScanner.hasNext(); similarityScoreSize++) { // Another for loop
+                similaritiesScore[similarityScoreSize] = Integer.parseInt(scoresScanner.next()); // set the similarityScoreSize cell of the similaritiesScore vector to the parsed integer from the next string
+            }
+            scoresScanner.close(); // Close the second scanner
+
+
+            similarities = new String[100]; // Initialize the similarity[] with a physical size of 100
+            similaritySize = 0; // Initialize the similaritySize to 0
+
+            if (scanner.hasNext()) { // If there's any similarity
+                Scanner simScanner = new Scanner(scanner.next()).useDelimiter(","); // Create a new scanner from the old one
+
+                for (similaritySize = 0; simScanner.hasNext(); similaritySize++) { // Another for loop
+                    similarities[similaritySize] = simScanner.next(); // set the similaritySize cell of the similarities vector to the parsed integer from the next string
+                }
+
+                simScanner.close(); // Third scanner closed
+            } else {
+                similaritySize++; // Increase the size
+                similarities[0] = null; // Set the first cell as null (when printing the null values are "No match found")
+            }
+            scanner.close(); // Close scanner
         }
 
         public String getTransformedSimilaritiesScores() {
-            StringBuilder builder = new StringBuilder();
-            for (int j : similaritiesScore) {
-                if (j == 0) builder.append("_");
-                else if (j >= 20) builder.append("^");
-                else builder.append("-");
+            String result = "";
+            for (int j : similaritiesScore) { // For each -> int student = similaritiesScore[i] when i increases by one every loop done
+                // The "graph" pattern
+                if (j == 0) result += "_"; // String concatenation
+                else if (j >= 20) result += "^"; // String concatenation
+                else result += "-"; // String concatenation
             }
-            return builder.toString();
-        }
-
-        public float getGradesSum() {
-            return grade;
-        }
-
-        public int getGradesSize() {
-            return grades.length;
+            return result;
         }
 
         public String getFinalGrade() {
-            if (grade<6 && grade > 5.5)
-                return 6+"-";
+            if (grade<6 && grade >= 5.5) // If 5.5 <= grade < 6.0
+                return 6 + "-"; // return "6-"
             else {
-                boolean decimal = grade % 1 != 0.5;
-                return String.format((decimal ? ("%d.0") : "%.1f"), decimal ? Math.round(grade) : grade);
+                boolean decimal = grade % 1 != 0.5; // Has a decimal part != 0.5
+                return String.valueOf(decimal ? Math.round(grade)+".0" : grade); // Basically round to the next integer and add ".0" to mach the output requirement
             }
         }
     }
 
-    private final Student[] students = new Student[100];
-    private int size = 0;
-
-    private float getFinalGrade(Student student) {
-        return student.getGradesSum()/student.getGradesSize();
-    }
-
-    private void printSimilarity(Student student) {
-        System.out.println(student.getTransformedSimilaritiesScores());
-    }
+    private final Student[] students = new Student[100]; // 100 IS THE PHYSICAL SIZE, NOT HE LOGICAL (see below)
+    private int size = 0; // THIS IS THE LOGICAL SIZE, NOT THE PHYSICAL SIZE
 
     private void parse(Scanner s) {
-        String[] details = new String[2];
+        String[] details = new String[2]; // Array of length two
         String temp;
-        while (s.hasNextLine()) {
-            temp = s.nextLine();
-            details[0] = temp;
-            if (!temp.isBlank() && s.hasNextLine()) {
-                temp = s.nextLine();
-                if (!temp.isBlank()) {
-                    details[1] = temp;
-                    students[size] = new Student(details);
-                    size++;
+        while (s.hasNextLine()) { // While has next line
+            temp = s.nextLine(); // Temp string set
+            details[0] = temp; // Setting details[0] -> First line
+            if (!temp.isBlank() && s.hasNextLine()) { // If this temp string isn't blank ("" || " ") and there's another line to read
+                temp = s.nextLine(); // Temp equals the new line
+                if (!temp.isBlank()) { // If the new line isn't blank ("" || " ")
+                    details[1] = temp; // details[1] -> Second line
+                    students[size] = new Student(details); // Add the new student to the students array
+                    size++; // Increment the size counter
                 }
             }
         }
     }
 
     public static void main(String[] args) {
-        Parser p = new Parser();
-        Scanner scanner = UIAuxiliaryMethods.askUserForInput().getScanner();
-        p.parse(scanner);
-        String out = UIAuxiliaryMethods.askUserForString("Where do you want to store this information?");
-        File f = new File(out);
-        if (!f.exists() || f.isDirectory()) {
-            try {
-                if (f.createNewFile())
-                    System.out.println("Created a new file to store information");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(f));
-            writer.write(p.getOutput());
-            writer.flush();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Parser p = new Parser(); // new instance of Parser class
+        Scanner scanner = UIAuxiliaryMethods.askUserForInput().getScanner(); // Get scanner from this library
+        p.parse(scanner); // Parses the file
+        System.out.println(p.getOutput());
     }
 
     private String getOutput() {
-        StringBuilder builder = new StringBuilder();
-        for (Student student : students) {
+        String result = ""; // Initialization -> Needed to make available the string concatenation
+        for (Student student : students) { // For each cycle -> Student student = students[i] when i increases by one every loop done
             if (student == null)
-                continue;
-            builder.append(student.name).append(" has an average of ").append(student.getFinalGrade()).append("\n");
-            builder.append("\t").append(student.getTransformedSimilaritiesScores()).append("\n");
-            if (student.similaritySize != 0)
-                for (String similarity : student.similarities)
-                    builder.append("\t").append(Objects.requireNonNullElse(similarity, "No matches found"))
-                            .append("\n");
+                continue; // Skip the current loop cycle
+            result += student.name; // Appends with string concatenation the current student name
+            result += " has an average of ";
+            result += student.getFinalGrade(); // Appends with string concatenation the final grade (grade's sum / grade's size)
+            result += "\n"; // Appends with string concatenation the "new line" character
+            result += "\t"; // Appends with string concatenation the "tab" character
+            result += student.getTransformedSimilaritiesScores(); // Appends with string concatenation the similarity graph
+            result += "\n"; // Appends with string concatenation the "new line" character
+            if (student.similaritySize != 0) // If similarity array isn't empty (else throws NullPointerException)
+                for (int i = 0; i < student.similaritySize; i++) { // For loop -> i increases while i is less than similarityScoreSize
+                    result += "\t";
+                    result += student.similarities[i] == null ? "No matches found" : student.similarities[i]; // If null means that no matches are found, else print these matches
+                    result += "\n";
+                }
         }
-        return builder.toString();
+        return result; // return the final result
     }
 
 }
