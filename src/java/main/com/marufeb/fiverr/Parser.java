@@ -1,9 +1,9 @@
 package com.marufeb.fiverr;
 
-import ui.LibUIScanner;
 import ui.UIAuxiliaryMethods;
 
-import java.io.File;
+import java.io.*;
+import java.util.Objects;
 import java.util.Scanner;
 
 /* For the end of year administration of Programming for History of Arts students you are
@@ -35,11 +35,13 @@ import java.util.Scanner;
  * The output for the aforementioned input should be:
  */
 public class Parser {
-    private class Student {
+    private static class Student {
         private final int[] grades;
         private final String[] similarities;
+        private int similaritySize = 0;
+        private final int[] similaritiesScore;
         private final String name;
-        private int grade = 0;
+        private float grade = 0;
 
         public Student(String[] details) {
             String[] d0 = details[0].split("_");
@@ -51,33 +53,116 @@ public class Parser {
             }
             grade/=grades.length;
             String[] d1 = details[1].split(";");
+            String[] scores = d1[0].split("=");
+            similaritiesScore = new int[10];
+            for (int i = 0; i < scores.length; i++) {
+                similaritiesScore[i] = Integer.parseInt(scores[i]);
+                similaritySize++;
+            }
+            similarities = new String[100];
+            if (d1.length == 2) {
+                String[] s = d1[1].split(",");
+                System.arraycopy(s, 0, similarities, 0, s.length);
+            }
         }
 
-        public int getGradesSum() {
+        public String[] getSimilarities() {
+            return similarities;
+        }
+
+        public String getTransformedSimilaritiesScores() {
+            StringBuilder builder = new StringBuilder();
+            for (int j : similaritiesScore) {
+                if (j == 0) builder.append("_");
+                else if (j >= 20) builder.append("^");
+                else builder.append("-");
+            }
+            return builder.toString();
+        }
+
+        public float getGradesSum() {
             return grade;
         }
 
         public int getGradesSize() {
             return grades.length;
         }
+
+        public String getFinalGrade() {
+            if (grade<6 && grade > 5.5)
+                return 6+"-";
+            else {
+                boolean decimal = grade % 1 != 0.5;
+                return String.format((decimal ? ("%d.0") : "%.1f"), decimal ? Math.round(grade) : grade);
+            }
+        }
     }
 
-    private int getFinalGrade(Student student) {
+    private final Student[] students = new Student[100];
+    private int size = 0;
+
+    private float getFinalGrade(Student student) {
         return student.getGradesSum()/student.getGradesSize();
     }
 
-    private void printSimilarity() {
+    private void printSimilarity(Student student) {
+        System.out.println(student.getTransformedSimilaritiesScores());
     }
 
     private void parse(Scanner s) {
-
+        String[] details = new String[2];
+        String temp;
+        while (s.hasNextLine()) {
+            temp = s.nextLine();
+            details[0] = temp;
+            if (!temp.isBlank() && s.hasNextLine()) {
+                temp = s.nextLine();
+                if (!temp.isBlank()) {
+                    details[1] = temp;
+                    students[size] = new Student(details);
+                    size++;
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
         Parser p = new Parser();
         Scanner scanner = UIAuxiliaryMethods.askUserForInput().getScanner();
         p.parse(scanner);
+        String out = UIAuxiliaryMethods.askUserForString("Where do you want to store this information?");
+        File f = new File(out);
+        if (!f.exists() || f.isDirectory()) {
+            try {
+                if (f.createNewFile())
+                    System.out.println("Created a new file to store information");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(f));
+            writer.write(p.getOutput());
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
+    private String getOutput() {
+        StringBuilder builder = new StringBuilder();
+        for (Student student : students) {
+            if (student == null)
+                continue;
+            builder.append(student.name).append(" has an average of ").append(student.getFinalGrade()).append("\n");
+            builder.append("\t").append(student.getTransformedSimilaritiesScores()).append("\n");
+            if (student.similaritySize != 0)
+                for (String similarity : student.similarities)
+                    builder.append("\t").append(Objects.requireNonNullElse(similarity, "No matches found"))
+                            .append("\n");
+        }
+        return builder.toString();
     }
 
 }
