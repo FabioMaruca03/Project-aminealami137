@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="libUI">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/libUI.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
